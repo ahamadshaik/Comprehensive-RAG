@@ -1,0 +1,18 @@
+# Core RAG stack
+faiss-cpu>=1.8.0
+sentence-transformers>=3.0.0
+rank-bm25>=0.2.2
+numpy>=1.24.0
+
+# Config & API
+pydantic>=2.0
+pydantic-settings>=2.0
+python-dotenv>=1.0.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# LLM backends
+openai>=1.40.0
+google-cloud-aiplatform>=1.38.0
+google-cloud-storage>=2.14.0
+tiktoken>=0.7.0
