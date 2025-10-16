@@ -16,3 +16,6 @@ openai>=1.40.0
 google-cloud-aiplatform>=1.38.0
 google-cloud-storage>=2.14.0
 tiktoken>=0.7.0
+
+# Dev / tests
+pytest>=8.0.0
