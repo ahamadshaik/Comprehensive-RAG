@@ -1,4 +1,4 @@
-.PHONY: setup ingest eval serve
+.PHONY: setup ingest eval serve test
 
 setup:
 	python -m venv .venv
@@ -13,3 +13,6 @@ eval:
 
 serve:
 	uvicorn app.api:app --reload --host 0.0.0.0 --port 8000
+
+test:
+	python -m pytest tests/ -q
