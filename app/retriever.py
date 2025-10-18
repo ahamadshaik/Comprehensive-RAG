@@ -78,7 +78,7 @@ class HybridRetriever:
         ).astype(np.float32)
         scores, ids = self._index.search(q, min(top_k, self._index.ntotal))
         out: dict[int, float] = {}
-        for s, i in zip(scores[0], ids[0], strict=False):
+        for s, i in zip(scores[0], ids[0]):
             if i < 0:
                 continue
             out[int(i)] = float(s)
@@ -143,7 +143,7 @@ class HybridRetriever:
             self._reranker = CrossEncoder(self.settings.rerank_model)
         pairs = [[query, c.text] for c in candidates]
         scores = self._reranker.predict(pairs, show_progress_bar=False)
-        for c, s in zip(candidates, scores, strict=False):
+        for c, s in zip(candidates, scores):
             c.rerank = float(s)
         ranked = sorted(
             candidates,
