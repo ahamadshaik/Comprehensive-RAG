@@ -1,0 +1,2 @@
+{"q": "What are the main modules in the architecture?", "must_contain": "architecture.md"}
+{"q": "How should API keys be stored?", "must_contain": "security.md"}
