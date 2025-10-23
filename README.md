@@ -49,6 +49,7 @@ Optional convenience targets:
 make setup
 make ingest
 make eval
+make test    # unit tests (pytest)
 make serve   # start FastAPI server
 ```
 
@@ -61,7 +62,7 @@ make serve   # start FastAPI server
 ## 🧭 Project Layout
 
 ```
-rag-pro/
+Comprehensive-RAG/
 ├─ app/
 │  ├─ config.py        # pydantic settings (.env)
 │  ├─ utils.py         # GCS helpers, timers
