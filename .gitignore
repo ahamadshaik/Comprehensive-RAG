@@ -13,3 +13,5 @@ data/
 dist/
 build/
 .ipynb_checkpoints/
+.coverage
+htmlcov/
