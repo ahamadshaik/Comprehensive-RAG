@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,6 +52,18 @@ class Settings(BaseSettings):
     max_context_tokens: int = Field(default=4096, alias="MAX_CONTEXT_TOKENS")
     compression_max_sentences: int = Field(default=12, alias="COMPRESSION_MAX_SENTENCES")
 
+    # Enterprise / Phase 2
+    api_key: str = Field(default="", alias="API_KEY")
+    rate_limit_per_minute: int = Field(default=120, alias="RATE_LIMIT_PER_MINUTE")
+    json_logging: bool = Field(default=False, alias="JSON_LOGGING")
+    llm_timeout_seconds: float = Field(default=120.0, alias="LLM_TIMEOUT_SECONDS")
+    max_request_body_bytes: int = Field(default=1_048_576, alias="MAX_REQUEST_BODY_BYTES")
+
+    enable_graph_rag: bool = Field(default=False, alias="ENABLE_GRAPH_RAG")
+    enable_agentic_retrieval: bool = Field(default=False, alias="ENABLE_AGENTIC_RETRIEVAL")
+    agentic_max_steps: int = Field(default=3, alias="AGENTIC_MAX_STEPS")
+    enable_pdf_ingest: bool = Field(default=True, alias="ENABLE_PDF_INGEST")
+
     @property
     def data_path(self) -> Path:
         return Path(self.data_dir)
@@ -59,6 +71,21 @@ class Settings(BaseSettings):
     @property
     def docs_is_gcs(self) -> bool:
         return self.docs_path.startswith("gs://")
+
+    @model_validator(mode="after")
+    def validate_retrieval_settings(self) -> Settings:
+        if self.top_k_dense < 1 or self.top_k_fused < 1 or self.top_k_final < 1:
+            raise ValueError("TOP_K_DENSE, TOP_K_FUSED, TOP_K_FINAL must be >= 1")
+        if self.bm25_weight <= 0 or self.dense_weight <= 0:
+            raise ValueError("BM25_WEIGHT and DENSE_WEIGHT must be positive")
+        total = self.bm25_weight + self.dense_weight
+        if abs(total - 1.0) > 0.01:
+            raise ValueError("BM25_WEIGHT + DENSE_WEIGHT must sum to 1.0")
+        if self.agentic_max_steps < 1:
+            raise ValueError("AGENTIC_MAX_STEPS must be >= 1")
+        if self.rate_limit_per_minute < 1:
+            raise ValueError("RATE_LIMIT_PER_MINUTE must be >= 1")
+        return self
 
 
 def get_settings() -> Settings:
