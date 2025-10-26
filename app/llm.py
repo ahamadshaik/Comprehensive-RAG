@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import httpx
+
 from app.config import Settings, get_settings
 
 
@@ -28,7 +30,8 @@ def _openai_chat(
 ) -> str:
     from openai import OpenAI
 
-    client = OpenAI(api_key=s.openai_api_key or None)
+    timeout = httpx.Timeout(s.llm_timeout_seconds)
+    client = OpenAI(api_key=s.openai_api_key or None, timeout=timeout)
     resp = client.chat.completions.create(
         model=s.model,
         messages=_messages_to_openai(messages),
@@ -50,7 +53,6 @@ def _vertex_chat(
 
     vertexai.init(project=s.vertex_project_id, location=s.vertex_location)
     model = GenerativeModel(s.vertex_model)
-    # Flatten to a single user-style prompt for Gemini (simple path)
     parts: list[str] = []
     for m in messages:
         role = m["role"]
@@ -66,15 +68,16 @@ def _vertex_chat(
         temperature=temperature,
         max_output_tokens=max_tokens,
     )
+    # SDK may not expose the same timeout as OpenAI; keep generation bounded by max_tokens.
     resp = model.generate_content(prompt, generation_config=cfg)
     if not resp.candidates:
         return ""
     try:
         return (resp.text or "").strip()
     except ValueError:
-        parts: list[str] = []
+        text_parts: list[str] = []
         for c in resp.candidates:
             for part in c.content.parts:
                 if hasattr(part, "text") and part.text:
-                    parts.append(part.text)
-        return "".join(parts).strip()
+                    text_parts.append(part.text)
+        return "".join(text_parts).strip()
