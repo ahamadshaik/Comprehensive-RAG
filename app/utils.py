@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -87,22 +88,40 @@ def read_gcs_object_uri(gs_uri: str) -> bytes:
     return blob.download_as_bytes()
 
 
-def load_local_docs(root: str) -> list[tuple[str, str]]:
-    """Load .md and .txt files under root; returns list of (relative_path, text)."""
-    from pathlib import Path
+def read_pdf_text(path: Path) -> str:
+    from pypdf import PdfReader
 
+    p = path
+    reader = PdfReader(str(p))
+    parts: list[str] = []
+    for page in reader.pages:
+        t = page.extract_text()
+        if t:
+            parts.append(t)
+    return "\n".join(parts)
+
+
+def load_local_docs(root: str, *, load_pdf: bool = False) -> list[tuple[str, str]]:
+    """Load .md, .txt, and optionally .pdf files under root."""
     base = Path(root).resolve()
     if not base.is_dir():
         raise FileNotFoundError(f"DOCS_PATH is not a directory: {root}")
+
+    exts = {".md", ".txt"}
+    if load_pdf:
+        exts.add(".pdf")
 
     out: list[tuple[str, str]] = []
     for path in sorted(base.rglob("*")):
         if path.is_dir():
             continue
-        if path.suffix.lower() not in {".md", ".txt"}:
+        if path.suffix.lower() not in exts:
             continue
         rel = str(path.relative_to(base)).replace("\\", "/")
-        text = path.read_text(encoding="utf-8", errors="replace")
+        if path.suffix.lower() == ".pdf":
+            text = read_pdf_text(path)
+        else:
+            text = path.read_text(encoding="utf-8", errors="replace")
         out.append((rel, text))
     return out
 
