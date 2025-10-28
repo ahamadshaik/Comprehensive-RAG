@@ -9,6 +9,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from app.config import Settings, get_settings
+from app.graph import build_graph_json, save_graph
 from app.utils import iter_gcs_text_blobs, load_local_docs, parse_gcs_uri
 
 
@@ -43,7 +44,7 @@ def load_documents(settings: Settings) -> list[tuple[str, str]]:
     if settings.docs_is_gcs:
         bucket, prefix = parse_gcs_uri(settings.docs_path)
         return list(iter_gcs_text_blobs(bucket, prefix))
-    return load_local_docs(settings.docs_path)
+    return load_local_docs(settings.docs_path, load_pdf=settings.enable_pdf_ingest)
 
 
 def build_records(
@@ -103,10 +104,17 @@ def build_index(settings: Settings | None = None) -> Path:
                 "chunk_size": s.chunk_size,
                 "chunk_overlap": s.chunk_overlap,
                 "num_chunks": len(records),
+                "graph_rag": s.enable_graph_rag,
             },
             f,
             indent=2,
         )
+
+    if s.enable_graph_rag:
+        chunk_dicts = [{"id": r.id, "source": r.source, "text": r.text} for r in records]
+        graph = build_graph_json(chunk_dicts)
+        save_graph(data_dir / "graph.json", graph)
+        print(f"Wrote graph.json with {len(graph.get('entity_to_chunks', {}))} entities")
 
     print(f"Wrote FAISS index and {len(records)} chunks to {data_dir}")
     return data_dir
