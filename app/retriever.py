@@ -44,6 +44,7 @@ class HybridRetriever:
         self._tokenized: list[list[str]] = []
         self._embedder: SentenceTransformer | None = None
         self._reranker: CrossEncoder | None = None
+        self._graph: dict[str, Any] | None = None
 
     def _ensure_loaded(self) -> None:
         if self._index is not None:
@@ -57,6 +58,11 @@ class HybridRetriever:
         with meta_path.open(encoding="utf-8") as f:
             for line in f:
                 self._chunks.append(json.loads(line))
+        gp = self.data_dir / "graph.json"
+        if gp.is_file():
+            self._graph = json.loads(gp.read_text(encoding="utf-8"))
+        else:
+            self._graph = None
         texts = [c["text"] for c in self._chunks]
         self._tokenized = [tokenize_simple(t) for t in texts]
         self._bm25 = BM25Okapi(self._tokenized)
@@ -151,6 +157,34 @@ class HybridRetriever:
             reverse=True,
         )
         return ranked[:k]
+
+    def merge_graph_chunks(
+        self,
+        question: str,
+        pool: dict[int, ScoredChunk],
+        boost: float = 0.42,
+    ) -> dict[int, ScoredChunk]:
+        from app.graph import query_entity_chunk_ids
+
+        self._ensure_loaded()
+        if not self._graph:
+            return pool
+        ids = query_entity_chunk_ids(self._graph, question)
+        for cid in ids:
+            if cid in pool:
+                continue
+            if cid < 0 or cid >= len(self._chunks):
+                continue
+            ch = self._chunks[cid]
+            pool[cid] = ScoredChunk(
+                chunk_id=cid,
+                source=ch["source"],
+                text=ch["text"],
+                bm25=0.0,
+                dense=0.0,
+                fused=boost,
+            )
+        return pool
 
 
 def get_retriever(settings: Settings | None = None) -> HybridRetriever:
