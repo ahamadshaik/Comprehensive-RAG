@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.agent_retrieval import expand_queries_agentic
 from app.compress import compress_context
 from app.config import Settings, get_settings
 from app.llm import chat
@@ -48,8 +49,23 @@ def answer(
     top_k_dense = s.top_k_dense
     top_k_fused = s.top_k_fused
 
+    if s.enable_agentic_retrieval:
+
+        def _pool_builder(qs: list[str]) -> dict[int, ScoredChunk]:
+            return _pool_retrieval(r, qs, top_k_dense, top_k_fused)
+
+        queries = expand_queries_agentic(
+            question,
+            queries,
+            r,
+            _pool_builder,
+            settings=s,
+        )
+
     with timed_step(timer, "retrieve"):
         pool = _pool_retrieval(r, queries, top_k_dense, top_k_fused)
+        if s.enable_graph_rag:
+            pool = r.merge_graph_chunks(question, pool)
         candidates = sorted(pool.values(), key=lambda x: x.fused, reverse=True)[: s.top_k_fused]
 
     with timed_step(timer, "rerank"):
@@ -63,6 +79,8 @@ def answer(
         wider = int(s.top_k_fused * s.adaptive_k_multiplier)
         with timed_step(timer, "retrieve_adaptive"):
             pool = _pool_retrieval(r, queries, top_k_dense, max(wider, s.top_k_fused))
+            if s.enable_graph_rag:
+                pool = r.merge_graph_chunks(question, pool)
             candidates = sorted(pool.values(), key=lambda x: x.fused, reverse=True)[:wider]
         with timed_step(timer, "rerank_adaptive"):
             reranked = r.rerank(question, list(candidates), top_k=s.top_k_final)
