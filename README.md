@@ -72,6 +72,9 @@ Comprehensive-RAG/
 │  ├─ compress.py      # contextual compression (LLM filter)
 │  ├─ llm.py           # OpenAI/Vertex adapters
 │  ├─ rag.py           # orchestrate → answer()
+│  ├─ graph.py         # heuristic entity graph (optional)
+│  ├─ agent_retrieval.py # optional agentic query expansion
+│  ├─ logging_config.py  # JSON or plain logging
 │  └─ api.py           # optional FastAPI endpoint
 ├─ notebooks/
 │  ├─ 00_quickstart.ipynb
@@ -113,6 +116,24 @@ Copy `.env.example` → `.env` and edit as needed:
 
 > **Vertex users:** Ensure ADC is active (`gcloud auth application-default login`)  
 > **OpenAI users:** Set `OPENAI_API_KEY` in `.env` or environment variables.
+
+### Enterprise (Phase 2)
+
+| Key | Example | Notes |
+|-----|---------|-------|
+| `API_KEY` | _(empty or secret)_ | If set, `POST /ask` requires `Authorization: Bearer …` |
+| `RATE_LIMIT_PER_MINUTE` | `120` | Per-IP limit on `/ask` |
+| `JSON_LOGGING` | `false` | One JSON object per log line for ingestion by log stacks |
+| `LLM_TIMEOUT_SECONDS` | `120` | OpenAI client HTTP timeout |
+| `MAX_REQUEST_BODY_BYTES` | `1048576` | Rejects oversized JSON bodies |
+| `ENABLE_GRAPH_RAG` | `false` | Build `graph.json` at ingest; merge entity-linked chunks at query time |
+| `ENABLE_AGENTIC_RETRIEVAL` | `false` | Add follow-up search queries when rerank scores stay low |
+| `AGENTIC_MAX_STEPS` | `3` | Max agentic refinement rounds |
+| `ENABLE_PDF_INGEST` | `true` | Include `.pdf` when loading local `DOCS_PATH` |
+
+**Readiness:** `GET /ready` returns `503` until `data/faiss.index` and `data/chunks.jsonl` exist (run `python -m app.ingest` first).
+
+**Evaluation gate:** set `EVAL_MIN_PRECISION` (e.g. `0.5`) when running `python eval/evaluate.py`; the process exits with code `1` if precision@K is below the threshold.
 
 ---
 
