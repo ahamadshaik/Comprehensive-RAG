@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -62,6 +63,14 @@ def main() -> None:
     print(f"Precision@{k} (must_contain in top-{k} sources): {p_at_k:.3f}")
     print(f"MRR (first relevant rank): {mrr:.3f}")
     print(f"Avg retrieval+rerank latency: {avg_lat*1000:.1f} ms")
+
+    min_p = float(os.environ.get("EVAL_MIN_PRECISION", "0"))
+    if min_p > 0 and p_at_k < min_p:
+        print(
+            f"FAILED: P@{k}={p_at_k:.3f} < EVAL_MIN_PRECISION={min_p}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":
